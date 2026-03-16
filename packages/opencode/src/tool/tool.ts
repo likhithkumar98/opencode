@@ -7,7 +7,7 @@ import { Truncate } from "./truncation"
 
 export namespace Tool {
   interface Metadata {
-    [key: string]: any
+    [key: string]: unknown
   }
 
   export interface InitContext {
@@ -20,7 +20,7 @@ export namespace Tool {
     agent: string
     abort: AbortSignal
     callID?: string
-    extra?: { [key: string]: any }
+    extra?: Record<string, unknown>
     messages: MessageV2.WithParts[]
     metadata(input: { title?: string; metadata?: M }): void
     ask(input: Omit<PermissionNext.Request, "id" | "sessionID" | "tool">): Promise<void>
@@ -44,7 +44,7 @@ export namespace Tool {
   }
 
   export type InferParameters<T extends Info> = T extends Info<infer P> ? z.infer<P> : never
-  export type InferMetadata<T extends Info> = T extends Info<any, infer M> ? M : never
+  export type InferMetadata<T extends Info> = T extends Info<z.ZodType, infer M> ? M : never
 
   export function define<Parameters extends z.ZodType, Result extends Metadata>(
     id: string,
