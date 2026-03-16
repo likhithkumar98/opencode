@@ -778,9 +778,9 @@ export namespace Config {
         // write, edit, patch, multiedit all map to edit permission
         if (tool === "write" || tool === "edit" || tool === "patch" || tool === "multiedit") {
           permission.edit = action
-        } else {
-          permission[tool] = action
+          continue
         }
+        permission[tool] = action
       }
       Object.assign(permission, agent.permission)
 

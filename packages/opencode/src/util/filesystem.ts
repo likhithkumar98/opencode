@@ -55,20 +55,17 @@ export namespace Filesystem {
     try {
       if (mode) {
         await writeFile(p, content, { mode })
-      } else {
-        await writeFile(p, content)
-      }
-    } catch (e) {
-      if (isEnoent(e)) {
-        await mkdir(dirname(p), { recursive: true })
-        if (mode) {
-          await writeFile(p, content, { mode })
-        } else {
-          await writeFile(p, content)
-        }
         return
       }
-      throw e
+      await writeFile(p, content)
+    } catch (e) {
+      if (!isEnoent(e)) throw e
+      await mkdir(dirname(p), { recursive: true })
+      if (mode) {
+        await writeFile(p, content, { mode })
+        return
+      }
+      await writeFile(p, content)
     }
   }
 

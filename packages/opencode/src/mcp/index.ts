@@ -310,10 +310,10 @@ export namespace MCP {
         status: s.status,
       }
     }
-    // Close existing client if present to prevent memory leaks
-    const existingClient = s.clients[name]
-    if (existingClient) {
-      await existingClient.close().catch((error) => {
+    // Close previous client if present to prevent memory leaks
+    const prev = s.clients[name]
+    if (prev) {
+      await prev.close().catch((error) => {
         log.error("Failed to close existing MCP client", { name, error })
       })
     }
@@ -380,14 +380,14 @@ export namespace MCP {
       ]
 
       let lastError: Error | undefined
-      const connectTimeout = mcp.timeout ?? DEFAULT_TIMEOUT
+      const timeout = mcp.timeout ?? DEFAULT_TIMEOUT
       for (const { name, transport } of transports) {
         try {
           const client = new Client({
             name: "opencode",
             version: Installation.VERSION,
           })
-          await withTimeout(client.connect(transport), connectTimeout)
+          await withTimeout(client.connect(transport), timeout)
           registerNotificationHandlers(client, key)
           mcpClient = client
           log.info("connected", { key, transport: name })
@@ -412,25 +412,23 @@ export namespace MCP {
                 status: "needs_client_registration" as const,
                 error: "Server does not support dynamic client registration. Please provide clientId in config.",
               }
-              // Show toast for needs_client_registration
               Bus.publish(TuiEvent.ToastShow, {
                 title: "MCP Authentication Required",
                 message: `Server "${key}" requires a pre-registered client ID. Add clientId to your config.`,
                 variant: "warning",
                 duration: 8000,
               }).catch((e) => log.debug("failed to show toast", { error: e }))
-            } else {
-              // Store transport for later finishAuth call
-              pendingOAuthTransports.set(key, transport)
-              status = { status: "needs_auth" as const }
-              // Show toast for needs_auth
-              Bus.publish(TuiEvent.ToastShow, {
-                title: "MCP Authentication Required",
-                message: `Server "${key}" requires authentication. Run: opencode mcp auth ${key}`,
-                variant: "warning",
-                duration: 8000,
-              }).catch((e) => log.debug("failed to show toast", { error: e }))
+              break
             }
+            // Store transport for later finishAuth call
+            pendingOAuthTransports.set(key, transport)
+            status = { status: "needs_auth" as const }
+            Bus.publish(TuiEvent.ToastShow, {
+              title: "MCP Authentication Required",
+              message: `Server "${key}" requires authentication. Run: opencode mcp auth ${key}`,
+              variant: "warning",
+              duration: 8000,
+            }).catch((e) => log.debug("failed to show toast", { error: e }))
             break
           }
 
@@ -466,13 +464,13 @@ export namespace MCP {
         log.info(`mcp stderr: ${chunk.toString()}`, { key })
       })
 
-      const connectTimeout = mcp.timeout ?? DEFAULT_TIMEOUT
+      const timeout = mcp.timeout ?? DEFAULT_TIMEOUT
       try {
         const client = new Client({
           name: "opencode",
           version: Installation.VERSION,
         })
-        await withTimeout(client.connect(transport), connectTimeout)
+        await withTimeout(client.connect(transport), timeout)
         registerNotificationHandlers(client, key)
         mcpClient = client
         status = {
@@ -583,10 +581,10 @@ export namespace MCP {
     const s = await state()
     s.status[name] = result.status
     if (result.mcpClient) {
-      // Close existing client if present to prevent memory leaks
-      const existingClient = s.clients[name]
-      if (existingClient) {
-        await existingClient.close().catch((error) => {
+      // Close previous client if present to prevent memory leaks
+      const prev = s.clients[name]
+      if (prev) {
+        await prev.close().catch((error) => {
           log.error("Failed to close existing MCP client", { name, error })
         })
       }
