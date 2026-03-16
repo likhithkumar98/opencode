@@ -10,8 +10,8 @@ export const ERRORS = {
         schema: resolver(
           z
             .object({
-              data: z.any(),
-              errors: z.array(z.record(z.string(), z.any())),
+              data: z.unknown(),
+              errors: z.array(z.record(z.string(), z.unknown())),
               success: z.literal(false),
             })
             .meta({
