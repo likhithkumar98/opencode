@@ -49,6 +49,9 @@ import { ModelID, ProviderID } from "./schema"
 
 const DEFAULT_CHUNK_TIMEOUT = 300_000
 
+/** Options passed to provider creation or getModel. Prefer unknown over any for type safety. */
+type ProviderOptions = Record<string, unknown>
+
 export namespace Provider {
   const log = Log.create({ service: "provider" })
 
@@ -56,6 +59,15 @@ export namespace Provider {
     const match = /^gpt-(\d+)/.exec(modelID)
     if (!match) return false
     return Number(match[1]) >= 5 && !modelID.startsWith("gpt-5-mini")
+  }
+
+  /** Shared getModel logic for OpenAI-compatible / Copilot-style providers (languageModel vs chat/responses). */
+  function copilotGetModel(sdk: SDK, modelID: string, useCompletionUrls?: boolean) {
+    if (useLanguageModel(sdk)) return sdk.languageModel(modelID)
+    if (useCompletionUrls && sdk.chat) return sdk.chat(modelID)
+    return shouldUseCopilotResponsesApi(modelID) && sdk.responses
+      ? sdk.responses(modelID)
+      : sdk.chat!(modelID)
   }
 
   function wrapSSE(res: Response, ms: number, ctl: AbortController) {
@@ -106,7 +118,7 @@ export namespace Provider {
     })
   }
 
-  const BUNDLED_PROVIDERS: Record<string, (options: any) => SDK> = {
+  const BUNDLED_PROVIDERS: Record<string, (options: ProviderOptions) => SDK> = {
     "@ai-sdk/amazon-bedrock": createAmazonBedrock,
     "@ai-sdk/anthropic": createAnthropic,
     "@ai-sdk/azure": createAzure,
@@ -131,16 +143,16 @@ export namespace Provider {
     "@ai-sdk/github-copilot": createGitHubCopilotOpenAICompatible,
   }
 
-  type CustomModelLoader = (sdk: any, modelID: string, options?: Record<string, any>) => Promise<any>
-  type CustomVarsLoader = (options: Record<string, any>) => Record<string, string>
+  type CustomModelLoader = (sdk: SDK, modelID: string, options?: ProviderOptions) => Promise<unknown>
+  type CustomVarsLoader = (options: ProviderOptions) => Record<string, string>
   type CustomLoader = (provider: Info) => Promise<{
     autoload: boolean
     getModel?: CustomModelLoader
     vars?: CustomVarsLoader
-    options?: Record<string, any>
+    options?: ProviderOptions
   }>
 
-  function useLanguageModel(sdk: any) {
+  function useLanguageModel(sdk: SDK) {
     return sdk.responses === undefined && sdk.chat === undefined
   }
 
@@ -181,7 +193,7 @@ export namespace Provider {
     openai: async () => {
       return {
         autoload: false,
-        async getModel(sdk: any, modelID: string, _options?: Record<string, any>) {
+        async getModel(sdk: SDK, modelID: string) {
           return sdk.responses(modelID)
         },
         options: {},
@@ -190,9 +202,8 @@ export namespace Provider {
     "github-copilot": async () => {
       return {
         autoload: false,
-        async getModel(sdk: any, modelID: string, _options?: Record<string, any>) {
-          if (useLanguageModel(sdk)) return sdk.languageModel(modelID)
-          return shouldUseCopilotResponsesApi(modelID) ? sdk.responses(modelID) : sdk.chat(modelID)
+        async getModel(sdk: SDK, modelID: string) {
+          return copilotGetModel(sdk, modelID)
         },
         options: {},
       }
@@ -200,9 +211,8 @@ export namespace Provider {
     "github-copilot-enterprise": async () => {
       return {
         autoload: false,
-        async getModel(sdk: any, modelID: string, _options?: Record<string, any>) {
-          if (useLanguageModel(sdk)) return sdk.languageModel(modelID)
-          return shouldUseCopilotResponsesApi(modelID) ? sdk.responses(modelID) : sdk.chat(modelID)
+        async getModel(sdk: SDK, modelID: string) {
+          return copilotGetModel(sdk, modelID)
         },
         options: {},
       }
@@ -216,16 +226,11 @@ export namespace Provider {
 
       return {
         autoload: false,
-        async getModel(sdk: any, modelID: string, options?: Record<string, any>) {
-          if (useLanguageModel(sdk)) return sdk.languageModel(modelID)
-          if (options?.["useCompletionUrls"]) {
-            return sdk.chat(modelID)
-          } else {
-            return sdk.responses(modelID)
-          }
+        async getModel(sdk: SDK, modelID: string, options?: ProviderOptions) {
+          return copilotGetModel(sdk, modelID, options?.["useCompletionUrls"] as boolean | undefined)
         },
         options: {},
-        vars(_options) {
+        vars(_opts) {
           return {
             ...(resource && { AZURE_RESOURCE_NAME: resource }),
           }
@@ -236,13 +241,8 @@ export namespace Provider {
       const resourceName = Env.get("AZURE_COGNITIVE_SERVICES_RESOURCE_NAME")
       return {
         autoload: false,
-        async getModel(sdk: any, modelID: string, options?: Record<string, any>) {
-          if (useLanguageModel(sdk)) return sdk.languageModel(modelID)
-          if (options?.["useCompletionUrls"]) {
-            return sdk.chat(modelID)
-          } else {
-            return sdk.responses(modelID)
-          }
+        async getModel(sdk: SDK, modelID: string, options?: ProviderOptions) {
+          return copilotGetModel(sdk, modelID, options?.["useCompletionUrls"] as boolean | undefined)
         },
         options: {
           baseURL: resourceName ? `https://${resourceName}.cognitiveservices.azure.com/openai` : undefined,
@@ -310,7 +310,7 @@ export namespace Provider {
       return {
         autoload: true,
         options: providerOptions,
-        async getModel(sdk: any, modelID: string, options?: Record<string, any>) {
+        async getModel(sdk: SDK, modelID: string, options?: ProviderOptions) {
           // Skip region prefixing if model already has a cross-region inference profile prefix
           // Models from models.dev may already include prefixes like us., eu., global., etc.
           const crossRegionPrefixes = ["global.", "us.", "eu.", "jp.", "apac.", "au."]
@@ -438,7 +438,7 @@ export namespace Provider {
       if (!autoload) return { autoload: false }
       return {
         autoload: true,
-        vars(_options: Record<string, any>) {
+        vars(_opts: ProviderOptions) {
           const endpoint = location === "global" ? "aiplatform.googleapis.com" : `${location}-aiplatform.googleapis.com`
           return {
             ...(project && { GOOGLE_VERTEX_PROJECT: project }),
@@ -460,7 +460,7 @@ export namespace Provider {
             return fetch(input, { ...init, headers })
           },
         },
-        async getModel(sdk: any, modelID: string) {
+        async getModel(sdk: SDK, modelID: string) {
           const id = String(modelID).trim()
           return sdk.languageModel(id)
         },
@@ -477,7 +477,7 @@ export namespace Provider {
           project,
           location,
         },
-        async getModel(sdk: any, modelID) {
+        async getModel(sdk: SDK, modelID: string) {
           const id = String(modelID).trim()
           return sdk.languageModel(id)
         },
@@ -502,8 +502,8 @@ export namespace Provider {
       return {
         autoload: !!envServiceKey,
         options: envServiceKey ? { deploymentId, resourceGroup } : {},
-        async getModel(sdk: any, modelID: string) {
-          return sdk(modelID)
+        async getModel(sdk: SDK, modelID: string) {
+          return (sdk as (id: string) => unknown)(modelID)
         },
       }
     },
@@ -578,10 +578,10 @@ export namespace Provider {
         options: {
           apiKey,
         },
-        async getModel(sdk: any, modelID: string) {
+        async getModel(sdk: SDK, modelID: string) {
           return sdk.languageModel(modelID)
         },
-        vars(_options) {
+        vars(_opts) {
           return {
             CLOUDFLARE_ACCOUNT_ID: accountId,
           }
@@ -640,7 +640,7 @@ export namespace Provider {
 
       return {
         autoload: true,
-        async getModel(_sdk: any, modelID: string, _options?: Record<string, any>) {
+        async getModel(_sdk: SDK, modelID: string) {
           // Model IDs use Unified API format: provider/model (e.g., "anthropic/claude-sonnet-4-5")
           return aigateway(unified(modelID))
         },
@@ -731,10 +731,10 @@ export namespace Provider {
         output: z.number(),
       }),
       status: z.enum(["alpha", "beta", "deprecated", "active"]),
-      options: z.record(z.string(), z.any()),
+      options: z.record(z.string(), z.unknown()),
       headers: z.record(z.string(), z.string()),
       release_date: z.string(),
-      variants: z.record(z.string(), z.record(z.string(), z.any())).optional(),
+      variants: z.record(z.string(), z.record(z.string(), z.unknown())).optional(),
     })
     .meta({
       ref: "Model",
@@ -748,7 +748,7 @@ export namespace Provider {
       source: z.enum(["env", "config", "custom", "api"]),
       env: z.string().array(),
       key: z.string().optional(),
-      options: z.record(z.string(), z.any()),
+      options: z.record(z.string(), z.unknown()),
       models: z.record(z.string(), Model),
     })
     .meta({
@@ -1019,7 +1019,7 @@ export namespace Provider {
 
       // Load for the main provider if auth exists
       if (auth) {
-        const options = await plugin.auth.loader(() => Auth.get(providerID) as any, database[plugin.auth.provider])
+        const options = await plugin.auth.loader(() => Auth.get(providerID), database[plugin.auth.provider])
         const opts = options ?? {}
         const patch: Partial<Info> = providers[providerID] ? { options: opts } : { source: "custom", options: opts }
         mergeProvider(providerID, patch)
@@ -1032,7 +1032,7 @@ export namespace Provider {
           const enterpriseAuth = await Auth.get(enterpriseProviderID)
           if (enterpriseAuth) {
             const enterpriseOptions = await plugin.auth.loader(
-              () => Auth.get(enterpriseProviderID) as any,
+              () => Auth.get(enterpriseProviderID),
               database[enterpriseProviderID],
             )
             const opts = enterpriseOptions ?? {}
@@ -1188,7 +1188,7 @@ export namespace Provider {
       const chunkTimeout = options["chunkTimeout"] || DEFAULT_CHUNK_TIMEOUT
       delete options["chunkTimeout"]
 
-      options["fetch"] = async (input: any, init?: BunFetchRequestInit) => {
+      options["fetch"] = async (input: RequestInfo | URL, init?: BunFetchRequestInit) => {
         // Preserve custom fetch if it exists, wrap it with timeout logic
         const fetchFn = customFetch ?? fetch
         const opts = init ?? {}
