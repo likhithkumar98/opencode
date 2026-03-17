@@ -260,7 +260,11 @@ function createSessionEntries(props: {
   return { sessions }
 }
 
-export function DialogSelectFile(props: { mode?: DialogSelectFileMode; onOpenFile?: (path: string) => void }) {
+export function DialogSelectFile(props: {
+  mode?: DialogSelectFileMode
+  onOpenFile?: (path: string) => void
+  initialQuery?: string
+}) {
   const command = useCommand()
   const language = useLanguage()
   const layout = useLayout()
@@ -385,6 +389,7 @@ export function DialogSelectFile(props: { mode?: DialogSelectFileMode; onOpenFil
   return (
     <Dialog class="pt-3 pb-0 !max-h-[480px]" transition>
       <List
+        filter={props.initialQuery ?? ""}
         search={{
           placeholder: filesOnly()
             ? language.t("session.header.searchFiles")

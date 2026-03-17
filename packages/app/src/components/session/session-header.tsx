@@ -151,6 +151,10 @@ export function SessionHeader() {
   })
   const hotkey = createMemo(() => command.keybind("file.open"))
   const os = createMemo(() => detectOS(platform))
+  const gitWorkspacesEnabled = createMemo(() => {
+    const p = project()
+    return p?.vcs === "git" && layout.sidebar.workspaces(p.worktree)()
+  })
 
   const [exists, setExists] = createStore<Partial<Record<OpenApp, boolean>>>({
     finder: true,
@@ -270,23 +274,25 @@ export function SessionHeader() {
       <Show when={centerMount()}>
         {(mount) => (
           <Portal mount={mount()}>
-            <Button
-              type="button"
-              variant="ghost"
-              size="small"
-              class="hidden md:flex w-[240px] max-w-full min-w-0 pl-0.5 pr-2 items-center gap-2 justify-between rounded-md border border-border-weak-base bg-surface-panel shadow-none cursor-default"
+            <div
+              class="hidden md:flex w-[240px] max-w-full min-w-0 pl-2 pr-2 items-center gap-2 rounded-md border border-border-weak-base bg-surface-panel shadow-none cursor-text"
               onClick={() => command.trigger("file.open")}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault()
+                  command.trigger("file.open")
+                }
+              }}
+              role="searchbox"
+              tabIndex={0}
               aria-label={language.t("session.header.searchFiles")}
             >
-              <div class="flex min-w-0 flex-1 items-center gap-1.5 overflow-visible">
-                <Icon name="magnifying-glass" size="small" class="icon-base shrink-0 size-4" />
-                <span class="flex-1 min-w-0 text-12-regular text-text-weak truncate text-left">
-                  {language.t("session.header.search.placeholder", {
-                    project: name(),
-                  })}
-                </span>
-              </div>
-
+              <Icon name="magnifying-glass" size="small" class="icon-base shrink-0 size-4 text-text-weak" />
+              <span class="flex-1 min-w-0 text-12-regular text-text-weak truncate text-left pointer-events-none">
+                {language.t("session.header.search.placeholder", {
+                  project: name(),
+                })}
+              </span>
               <Show when={hotkey()}>
                 {(keybind) => (
                   <Keybind class="shrink-0 !border-0 !bg-transparent !shadow-none px-0 text-text-weaker">
@@ -294,7 +300,7 @@ export function SessionHeader() {
                   </Keybind>
                 )}
               </Show>
-            </Button>
+            </div>
           </Portal>
         )}
       </Show>
@@ -474,6 +480,27 @@ export function SessionHeader() {
                           }}
                         />
                       </div>
+                    </Button>
+                  </TooltipKeybind>
+                  <TooltipKeybind
+                    title={language.t("command.workspace.toggle")}
+                    keybind={command.keybind("workspace.toggle")}
+                  >
+                    <Button
+                      variant="ghost"
+                      class="titlebar-icon w-8 h-6 p-0 box-border"
+                      onClick={() => command.trigger("workspace.toggle")}
+                      disabled={!project() || project()?.vcs !== "git"}
+                      aria-label={language.t("command.workspace.toggle")}
+                    >
+                      <Icon
+                        size="small"
+                        name="branch"
+                        classList={{
+                          "text-icon-strong": gitWorkspacesEnabled(),
+                          "text-icon-weak": !gitWorkspacesEnabled(),
+                        }}
+                      />
                     </Button>
                   </TooltipKeybind>
                 </div>

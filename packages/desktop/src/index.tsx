@@ -21,7 +21,8 @@ import { relaunch } from "@tauri-apps/plugin-process"
 import { open as shellOpen } from "@tauri-apps/plugin-shell"
 import { Store } from "@tauri-apps/plugin-store"
 import { check, type Update } from "@tauri-apps/plugin-updater"
-import { createResource, onCleanup, onMount, Show } from "solid-js"
+import { Spinner } from "@opencode-ai/ui/spinner"
+import { createResource, ErrorBoundary, onCleanup, onMount, Show } from "solid-js"
 import { render } from "solid-js/web"
 import pkg from "../package.json"
 import { initI18n, t } from "./i18n"
@@ -460,22 +461,73 @@ render(() => {
     })
   })
 
+  const loading = () => defaultServer.loading || sidecar.loading || !sidecar()
+  const initError = () => sidecar.error ?? defaultServer.error
+
   return (
-    <PlatformProvider value={platform}>
-      <AppBaseProviders>
-        <Show when={!defaultServer.loading && !sidecar.loading}>
-          {(_) => {
-            return (
-              <AppInterface
-                defaultServer={defaultServer.latest ?? ServerConnection.Key.make("sidecar")}
-                servers={servers()}
+    <ErrorBoundary
+      fallback={(err) => (
+        <div class="flex h-dvh min-h-screen w-full flex-col items-center justify-center gap-4 bg-[var(--background-base,#131010)] p-6">
+          <p class="text-center text-14-regular text-text-strong">{t("error.page.title")}</p>
+          <pre class="max-h-48 max-w-full overflow-auto rounded border border-border-base bg-surface-base p-3 text-12-regular text-text-weak">
+            {err?.message ?? String(err)}
+          </pre>
+          <button
+            type="button"
+            class="rounded-md border border-border-base bg-surface-base px-3 py-2 text-12-regular text-text-strong"
+            onClick={() => window.location.reload()}
+          >
+            {t("desktop.menu.reloadWebview")}
+          </button>
+        </div>
+      )}
+    >
+      <PlatformProvider value={platform}>
+        <AppBaseProviders>
+          <Show
+            when={initError()}
+            fallback={
+              <Show
+                when={!loading()}
+                fallback={
+                  <div
+                    class="flex h-dvh min-h-screen w-full items-center justify-center bg-background-base"
+                    role="status"
+                    aria-label={t("desktop.loading.progressAria")}
+                  >
+                    <Spinner class="size-8 text-icon-weak" />
+                  </div>
+                }
               >
-                <Inner />
-              </AppInterface>
-            )
-          }}
-        </Show>
-      </AppBaseProviders>
-    </PlatformProvider>
+                {(_) => (
+                  <AppInterface
+                    defaultServer={defaultServer.latest ?? ServerConnection.Key.make("sidecar")}
+                    servers={servers()}
+                  >
+                    <Inner />
+                  </AppInterface>
+                )}
+              </Show>
+            }
+          >
+            {(err) => (
+              <div class="flex h-dvh min-h-screen w-full flex-col items-center justify-center gap-4 bg-[var(--background-base,#131010)] p-6">
+                <p class="text-center text-14-regular text-text-strong">{t("error.page.title")}</p>
+                <pre class="max-h-48 max-w-full overflow-auto rounded border border-border-base bg-surface-base p-3 text-12-regular text-text-weak">
+                  {err instanceof Error ? err.message : String(err)}
+                </pre>
+                <button
+                  type="button"
+                  class="rounded-md border border-border-base bg-surface-base px-3 py-2 text-12-regular text-text-strong"
+                  onClick={() => window.location.reload()}
+                >
+                  {t("desktop.menu.reloadWebview")}
+                </button>
+              </div>
+            )}
+          </Show>
+        </AppBaseProviders>
+      </PlatformProvider>
+    </ErrorBoundary>
   )
 }, root!)

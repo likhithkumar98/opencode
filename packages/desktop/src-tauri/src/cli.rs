@@ -1,4 +1,4 @@
-use futures::{FutureExt, Stream, StreamExt, future};
+use futures::{Stream, StreamExt, future};
 use process_wrap::tokio::CommandWrap;
 #[cfg(unix)]
 use process_wrap::tokio::ProcessGroup;

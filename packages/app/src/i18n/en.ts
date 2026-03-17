@@ -536,7 +536,11 @@ export const dict = {
   "session.files.selectToOpen": "Select a file to open",
   "session.files.all": "All files",
   "session.files.empty": "No files",
+  "session.files.searchPlaceholder": "Search files…",
   "session.files.binaryContent": "Binary file (content cannot be displayed)",
+
+  "session.gitGraph.title": "Git graph",
+  "session.gitGraph.noBranch": "No branch",
 
   "session.messages.renderEarlier": "Render earlier messages",
   "session.messages.loadingEarlier": "Loading earlier messages...",

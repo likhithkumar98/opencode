@@ -16,6 +16,7 @@ const AVATAR_COLOR_KEYS = ["pink", "mint", "orange", "purple", "cyan", "lime"] a
 const DEFAULT_PANEL_WIDTH = 344
 const DEFAULT_SESSION_WIDTH = 600
 const DEFAULT_TERMINAL_HEIGHT = 280
+const DEFAULT_GIT_GRAPH_WIDTH = 260
 export type AvatarColorKey = (typeof AVATAR_COLOR_KEYS)[number]
 
 export function getAvatarColors(key?: string) {
@@ -206,11 +207,19 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
         return next
       })()
 
+      const gitGraph = value.gitGraph
+      const migratedGitGraph =
+        isRecord(gitGraph) && typeof gitGraph.width === "number" && typeof gitGraph.opened === "boolean"
+          ? gitGraph
+          : { width: DEFAULT_GIT_GRAPH_WIDTH, opened: true }
+
       if (
         migratedSidebar === sidebar &&
         migratedReview === review &&
         migratedFileTree === fileTree &&
-        migratedSessionTabs === sessionTabs
+        migratedSessionTabs === sessionTabs &&
+        (value as Record<string, unknown>).gitGraph !== undefined &&
+        migratedGitGraph === gitGraph
       ) {
         return value
       }
@@ -221,10 +230,11 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
         review: migratedReview,
         fileTree: migratedFileTree,
         sessionTabs: migratedSessionTabs,
+        gitGraph: migratedGitGraph,
       }
     }
 
-    const target = Persist.global("layout", ["layout.v6"])
+    const target = Persist.global("layout", ["layout.v7"])
     const [store, setStore, _, ready] = persisted(
       { ...target, migrate },
       createStore({
@@ -237,6 +247,10 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
         terminal: {
           height: DEFAULT_TERMINAL_HEIGHT,
           opened: false,
+        },
+        gitGraph: {
+          width: DEFAULT_GIT_GRAPH_WIDTH,
+          opened: true,
         },
         review: {
           diffStyle: "split" as ReviewDiffStyle,
@@ -614,6 +628,18 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
         height: createMemo(() => store.terminal.height),
         resize(height: number) {
           setStore("terminal", "height", height)
+        },
+      },
+      gitGraph: {
+        opened: createMemo(() => store.gitGraph?.opened ?? true),
+        width: createMemo(() => store.gitGraph?.width ?? DEFAULT_GIT_GRAPH_WIDTH),
+        resize(width: number) {
+          if (!store.gitGraph) setStore("gitGraph", { width: DEFAULT_GIT_GRAPH_WIDTH, opened: true })
+          setStore("gitGraph", "width", width)
+        },
+        toggle() {
+          if (!store.gitGraph) setStore("gitGraph", { width: DEFAULT_GIT_GRAPH_WIDTH, opened: true })
+          setStore("gitGraph", "opened", (x) => !x)
         },
       },
       review: {

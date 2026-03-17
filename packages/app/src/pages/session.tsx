@@ -45,6 +45,7 @@ import { MessageTimeline } from "@/pages/session/message-timeline"
 import { type DiffStyle, SessionReviewTab, type SessionReviewTabProps } from "@/pages/session/review-tab"
 import { useSessionLayout } from "@/pages/session/session-layout"
 import { syncSessionModel } from "@/pages/session/session-model-helpers"
+import { GitGraphPanel } from "@/pages/session/git-graph-panel"
 import { SessionSidePanel } from "@/pages/session/session-side-panel"
 import { TerminalPanel } from "@/pages/session/terminal-panel"
 import { useSessionCommands } from "@/pages/session/use-session-commands"
@@ -1678,6 +1679,14 @@ export default function Page() {
           </Tabs>
         </Show>
 
+        <SessionSidePanel
+          reviewPanel={reviewPanel}
+          activeDiff={tree.activeDiff}
+          focusReviewDiff={focusReviewDiff}
+          reviewSnap={ui.reviewSnap}
+          size={size}
+        />
+
         {/* Session panel */}
         <div
           classList={{
@@ -1806,17 +1815,35 @@ export default function Page() {
             </div>
           </Show>
         </div>
-
-        <SessionSidePanel
-          reviewPanel={reviewPanel}
-          activeDiff={tree.activeDiff}
-          focusReviewDiff={focusReviewDiff}
-          reviewSnap={ui.reviewSnap}
-          size={size}
-        />
       </div>
 
-      <TerminalPanel />
+      <div
+        class="flex flex-row min-h-0 overflow-hidden border-t border-border-weak-base"
+        classList={{ "border-t-0": !view().terminal.opened() }}
+        style={{
+          height: view().terminal.opened() ? `${layout.terminal.height()}px` : "0px",
+        }}
+      >
+        <Show when={layout.gitGraph.opened()}>
+          <GitGraphPanel />
+          <div onPointerDown={() => size.start()}>
+            <ResizeHandle
+              direction="horizontal"
+              edge="end"
+              size={layout.gitGraph.width()}
+              min={180}
+              max={500}
+              onResize={(width) => {
+                size.touch()
+                layout.gitGraph.resize(width)
+              }}
+            />
+          </div>
+        </Show>
+        <div class="flex-1 min-w-0 min-h-0">
+          <TerminalPanel />
+        </div>
+      </div>
     </div>
   )
 }

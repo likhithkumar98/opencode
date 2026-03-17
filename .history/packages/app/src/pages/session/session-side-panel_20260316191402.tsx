@@ -219,121 +219,6 @@ export function SessionSidePanel(props: {
       >
         <div class="size-full flex border-l border-border-weaker-base">
           <div
-            id="file-tree-panel"
-            aria-hidden={!fileOpen()}
-            inert={!fileOpen()}
-            class="relative min-w-0 h-full shrink-0 overflow-hidden"
-            classList={{
-              "pointer-events-none": !fileOpen(),
-              "transition-[width] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[width] motion-reduce:transition-none":
-                !props.size.active(),
-            }}
-            style={{ width: treeWidth() }}
-          >
-            <div
-              class="h-full flex flex-col overflow-hidden group/filetree"
-              classList={{ "border-r border-border-weaker-base": reviewOpen() }}
-            >
-              <Tabs
-                variant="pill"
-                value={fileTreeTab()}
-                onChange={setFileTreeTabValue}
-                class="h-full"
-                data-scope="filetree"
-              >
-                <Tabs.List>
-                  <Tabs.Trigger value="all" class="flex-1" classes={{ button: "w-full" }}>
-                    {language.t("session.files.all")}
-                  </Tabs.Trigger>
-                  <Tabs.Trigger value="changes" class="flex-1" classes={{ button: "w-full" }}>
-                    {reviewCount()}{" "}
-                    {language.t(reviewCount() === 1 ? "session.review.change.one" : "session.review.change.other")}
-                  </Tabs.Trigger>
-                </Tabs.List>
-                <Tabs.Content value="all" class="bg-background-stronger px-3 py-0">
-                  <div class="mt-2 flex w-full items-center gap-2 rounded-md border border-border-weak-base bg-surface-panel px-2 py-1.5">
-                    <Icon name="magnifying-glass" size="small" class="shrink-0 text-text-weak" />
-                    <input
-                      type="text"
-                      class="min-w-0 flex-1 bg-transparent text-12-regular text-text-strong outline-none placeholder:text-text-weak"
-                      placeholder={language.t("session.files.searchPlaceholder")}
-                      value={fileSearchQuery()}
-                      onInput={(e) => setFileSearchQuery(e.currentTarget.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault()
-                          dialog.show(() => (
-                            <DialogSelectFile initialQuery={fileSearchQuery().trim()} />
-                          ))
-                        }
-                      }}
-                      aria-label={language.t("session.header.searchFiles")}
-                    />
-                  </div>
-                  <Switch>
-                    <Match when={nofiles()}>{empty(language.t("session.files.empty"))}</Match>
-                    <Match when={true}>
-                      <FileTree
-                        path=""
-                        class="pt-3"
-                        modified={diffFiles()}
-                        kinds={kinds()}
-                        onFileClick={(node) => openTab(file.tab(node.path))}
-                      />
-                    </Match>
-                  </Switch>
-                </Tabs.Content>
-                <Tabs.Content value="changes" class="bg-background-stronger px-3 py-0">
-                  <Switch>
-                    <Match when={hasReview()}>
-                      <Show
-                        when={diffsReady()}
-                        fallback={
-                          <div class="px-2 py-2 text-12-regular text-text-weak">
-                            {language.t("common.loading")}
-                            {language.t("common.loading.ellipsis")}
-                          </div>
-                        }
-                      >
-                        <FileTree
-                          path=""
-                          class="pt-3"
-                          allowed={diffFiles()}
-                          kinds={kinds()}
-                          draggable={false}
-                          active={props.activeDiff}
-                          onFileClick={(node) => props.focusReviewDiff(node.path)}
-                        />
-                      </Show>
-                    </Match>
-                    <Match when={true}>
-                      {empty(
-                        language.t(sync.project && !sync.project.vcs ? "session.review.noChanges" : reviewEmptyKey()),
-                      )}
-                    </Match>
-                  </Switch>
-                </Tabs.Content>
-              </Tabs>
-            </div>
-          </div>
-          <Show when={fileOpen()}>
-            <div onPointerDown={() => props.size.start()}>
-              <ResizeHandle
-                direction="horizontal"
-                edge="end"
-                size={layout.fileTree.width()}
-                min={200}
-                max={480}
-                collapseThreshold={160}
-                onResize={(width) => {
-                  props.size.touch()
-                  layout.fileTree.resize(width)
-                }}
-                onCollapse={layout.fileTree.close}
-              />
-            </div>
-          </Show>
-          <div
             aria-hidden={!reviewOpen()}
             inert={!reviewOpen()}
             class="relative min-w-0 h-full flex-1 overflow-hidden bg-background-base"
@@ -467,6 +352,122 @@ export function SessionSidePanel(props: {
                 </DragOverlay>
               </DragDropProvider>
             </div>
+          </div>
+
+          <div
+            id="file-tree-panel"
+            aria-hidden={!fileOpen()}
+            inert={!fileOpen()}
+            class="relative min-w-0 h-full shrink-0 overflow-hidden"
+            classList={{
+              "pointer-events-none": !fileOpen(),
+              "transition-[width] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[width] motion-reduce:transition-none":
+                !props.size.active(),
+            }}
+            style={{ width: treeWidth() }}
+          >
+            <div
+              class="h-full flex flex-col overflow-hidden group/filetree"
+              classList={{ "border-l border-border-weaker-base": reviewOpen() }}
+            >
+              <Tabs
+                variant="pill"
+                value={fileTreeTab()}
+                onChange={setFileTreeTabValue}
+                class="h-full"
+                data-scope="filetree"
+              >
+                <Tabs.List>
+                  <Tabs.Trigger value="all" class="flex-1" classes={{ button: "w-full" }}>
+                    {language.t("session.files.all")}
+                  </Tabs.Trigger>
+                  <Tabs.Trigger value="changes" class="flex-1" classes={{ button: "w-full" }}>
+                    {reviewCount()}{" "}
+                    {language.t(reviewCount() === 1 ? "session.review.change.one" : "session.review.change.other")}
+                  </Tabs.Trigger>
+                </Tabs.List>
+                <Tabs.Content value="all" class="bg-background-stronger px-3 py-0">
+                  <div class="mt-2 flex w-full items-center gap-2 rounded-md border border-border-weak-base bg-surface-panel px-2 py-1.5">
+                    <Icon name="magnifying-glass" size="small" class="shrink-0 text-text-weak" />
+                    <input
+                      type="text"
+                      class="min-w-0 flex-1 bg-transparent text-12-regular text-text-strong outline-none placeholder:text-text-weak"
+                      placeholder={language.t("session.files.searchPlaceholder")}
+                      value={fileSearchQuery()}
+                      onInput={(e) => setFileSearchQuery(e.currentTarget.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault()
+                          dialog.show(() => (
+                            <DialogSelectFile initialQuery={fileSearchQuery().trim()} />
+                          ))
+                        }
+                      }}
+                      aria-label={language.t("session.header.searchFiles")}
+                    />
+                  </div>
+                  <Switch>
+                    <Match when={nofiles()}>{empty(language.t("session.files.empty"))}</Match>
+                    <Match when={true}>
+                      <FileTree
+                        path=""
+                        class="pt-3"
+                        modified={diffFiles()}
+                        kinds={kinds()}
+                        onFileClick={(node) => openTab(file.tab(node.path))}
+                      />
+                    </Match>
+                  </Switch>
+                </Tabs.Content>
+                <Tabs.Content value="changes" class="bg-background-stronger px-3 py-0">
+                  <Switch>
+                    <Match when={hasReview()}>
+                      <Show
+                        when={diffsReady()}
+                        fallback={
+                          <div class="px-2 py-2 text-12-regular text-text-weak">
+                            {language.t("common.loading")}
+                            {language.t("common.loading.ellipsis")}
+                          </div>
+                        }
+                      >
+                        <FileTree
+                          path=""
+                          class="pt-3"
+                          allowed={diffFiles()}
+                          kinds={kinds()}
+                          draggable={false}
+                          active={props.activeDiff}
+                          onFileClick={(node) => props.focusReviewDiff(node.path)}
+                        />
+                      </Show>
+                    </Match>
+                    <Match when={true}>
+                      {empty(
+                        language.t(sync.project && !sync.project.vcs ? "session.review.noChanges" : reviewEmptyKey()),
+                      )}
+                    </Match>
+                  </Switch>
+                </Tabs.Content>
+              </Tabs>
+            </div>
+            <Show when={fileOpen()}>
+              <div onPointerDown={() => props.size.start()}>
+                <ResizeHandle
+                  direction="horizontal"
+                  edge="start"
+                  size={layout.fileTree.width()}
+                  min={200}
+                  max={480}
+                  collapseThreshold={160}
+                  onResize={(width) => {
+                    props.size.touch()
+                    layout.fileTree.resize(width)
+                  }}
+                  onCollapse={layout.fileTree.close}
+                />
+              </div>
+            </Show>
           </div>
         </div>
       </aside>
