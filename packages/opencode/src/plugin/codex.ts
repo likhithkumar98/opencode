@@ -356,7 +356,7 @@ export async function CodexAuthPlugin(input: PluginInput): Promise<Hooks> {
       provider: "openai",
       async loader(getAuth, provider) {
         const auth = await getAuth()
-        if (auth.type !== "oauth") return {}
+        if (!auth || auth.type !== "oauth") return {}
 
         // Filter models to only allowed Codex models for OAuth
         const allowedModels = new Set([
@@ -432,15 +432,16 @@ export async function CodexAuthPlugin(input: PluginInput): Promise<Hooks> {
             }
 
             const currentAuth = await getAuth()
-            if (currentAuth.type !== "oauth") return fetch(requestInput, init)
+            if (!currentAuth || currentAuth.type !== "oauth") return fetch(requestInput, init)
 
             // Cast to include accountId field
             const authWithAccount = currentAuth as typeof currentAuth & { accountId?: string }
+            const oauth = currentAuth as { access: string; expires: number; refresh: string }
 
             // Check if token needs refresh
-            if (!currentAuth.access || currentAuth.expires < Date.now()) {
+            if (!oauth.access || oauth.expires < Date.now()) {
               log.info("refreshing codex access token")
-              const tokens = await refreshAccessToken(currentAuth.refresh)
+              const tokens = await refreshAccessToken(oauth.refresh)
               const newAccountId = extractAccountId(tokens) || authWithAccount.accountId
               await input.client.auth.set({
                 path: { id: "openai" },
@@ -452,7 +453,7 @@ export async function CodexAuthPlugin(input: PluginInput): Promise<Hooks> {
                   ...(newAccountId && { accountId: newAccountId }),
                 },
               })
-              currentAuth.access = tokens.access_token
+              oauth.access = tokens.access_token
               authWithAccount.accountId = newAccountId
             }
 
@@ -473,7 +474,7 @@ export async function CodexAuthPlugin(input: PluginInput): Promise<Hooks> {
             }
 
             // Set authorization header with access token
-            headers.set("authorization", `Bearer ${currentAuth.access}`)
+            headers.set("authorization", `Bearer ${oauth.access}`)
 
             // Set ChatGPT-Account-Id header for organization subscriptions
             if (authWithAccount.accountId) {

@@ -171,9 +171,8 @@ try {
   let data: Record<string, any> = {}
   if (e instanceof NamedError) {
     const obj = e.toObject()
-    Object.assign(data, {
-      ...obj.data,
-    })
+    const d = obj.data
+    Object.assign(data, typeof d === "object" && d !== null ? (d as Record<string, unknown>) : {})
   }
 
   if (e instanceof Error) {

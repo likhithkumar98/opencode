@@ -52,7 +52,7 @@ export namespace Log {
   export function file() {
     return logpath
   }
-  let write = (msg: string) => {
+  let write: (msg: string) => number | Promise<number> = (msg: string) => {
     process.stderr.write(msg)
     return msg.length
   }

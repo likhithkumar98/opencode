@@ -59,23 +59,27 @@ export namespace SessionRetry {
   }
 
   export function retryable(error: ReturnType<NamedError["toObject"]>) {
+    const data = error.data as Record<string, unknown> | undefined
     // context overflow errors should not be retried
     if (MessageV2.ContextOverflowError.isInstance(error)) return undefined
     if (MessageV2.APIError.isInstance(error)) {
-      if (!error.data.isRetryable) return undefined
-      if (error.data.responseBody?.includes("FreeUsageLimitError"))
+      const apiData = error.data as { isRetryable?: boolean; responseBody?: string; message?: string }
+      if (!apiData.isRetryable) return undefined
+      if (apiData.responseBody?.includes("FreeUsageLimitError"))
         return `Free usage exceeded, add credits https://opencode.ai/zen`
-      return error.data.message.includes("Overloaded") ? "Provider is overloaded" : error.data.message
+      return apiData.message?.includes("Overloaded") ? "Provider is overloaded" : apiData.message
     }
 
     const json = iife(() => {
       try {
-        if (typeof error.data?.message === "string") {
-          const parsed = JSON.parse(error.data.message)
-          return parsed
+        const msg = data?.message
+        if (typeof msg === "string") {
+          return JSON.parse(msg)
         }
-
-        return JSON.parse(error.data.message)
+        if (typeof msg !== "undefined") {
+          return JSON.parse(String(msg))
+        }
+        return undefined
       } catch {
         return undefined
       }

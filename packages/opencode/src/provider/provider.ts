@@ -52,6 +52,9 @@ const DEFAULT_CHUNK_TIMEOUT = 300_000
 /** Options passed to provider creation or getModel. Prefer unknown over any for type safety. */
 type ProviderOptions = Record<string, unknown>
 
+/** SDK provider that may expose chat/responses (e.g. Copilot-style). */
+type SDKWithChat = SDK & { chat?: (id: string) => unknown; responses?: (id: string) => unknown }
+
 export namespace Provider {
   const log = Log.create({ service: "provider" })
 
@@ -62,7 +65,7 @@ export namespace Provider {
   }
 
   /** Shared getModel logic for OpenAI-compatible / Copilot-style providers (languageModel vs chat/responses). */
-  function copilotGetModel(sdk: SDK, modelID: string, useCompletionUrls?: boolean) {
+  function copilotGetModel(sdk: SDKWithChat, modelID: string, useCompletionUrls?: boolean) {
     if (useLanguageModel(sdk)) return sdk.languageModel(modelID)
     if (useCompletionUrls && sdk.chat) return sdk.chat(modelID)
     return shouldUseCopilotResponsesApi(modelID) && sdk.responses
@@ -126,7 +129,7 @@ export namespace Provider {
     "@ai-sdk/google-vertex": createVertex,
     "@ai-sdk/google-vertex/anthropic": createVertexAnthropic,
     "@ai-sdk/openai": createOpenAI,
-    "@ai-sdk/openai-compatible": createOpenAICompatible,
+    "@ai-sdk/openai-compatible": createOpenAICompatible as unknown as (options: ProviderOptions) => SDK,
     "@openrouter/ai-sdk-provider": createOpenRouter,
     "@ai-sdk/xai": createXai,
     "@ai-sdk/mistral": createMistral,
@@ -152,7 +155,7 @@ export namespace Provider {
     options?: ProviderOptions
   }>
 
-  function useLanguageModel(sdk: SDK) {
+  function useLanguageModel(sdk: SDKWithChat) {
     return sdk.responses === undefined && sdk.chat === undefined
   }
 
@@ -194,7 +197,7 @@ export namespace Provider {
       return {
         autoload: false,
         async getModel(sdk: SDK, modelID: string) {
-          return sdk.responses(modelID)
+          return (sdk as SDKWithChat).responses!(modelID)
         },
         options: {},
       }
@@ -309,7 +312,7 @@ export namespace Provider {
 
       return {
         autoload: true,
-        options: providerOptions,
+        options: providerOptions as ProviderOptions,
         async getModel(sdk: SDK, modelID: string, options?: ProviderOptions) {
           // Skip region prefixing if model already has a cross-region inference profile prefix
           // Models from models.dev may already include prefixes like us., eu., global., etc.
@@ -324,7 +327,7 @@ export namespace Provider {
           // 3. Default "us-east-1" (baked into defaultRegion)
           const region = options?.region ?? defaultRegion
 
-          let regionPrefix = region.split("-")[0]
+          let regionPrefix = String(region).split("-")[0]
 
           switch (regionPrefix) {
             case "us": {
@@ -441,7 +444,7 @@ export namespace Provider {
         vars(_opts: ProviderOptions) {
           const endpoint = location === "global" ? "aiplatform.googleapis.com" : `${location}-aiplatform.googleapis.com`
           return {
-            ...(project && { GOOGLE_VERTEX_PROJECT: project }),
+            ...(typeof project === "string" && project ? { GOOGLE_VERTEX_PROJECT: project } : {}),
             GOOGLE_VERTEX_LOCATION: location,
             GOOGLE_VERTEX_ENDPOINT: endpoint,
           }
@@ -503,7 +506,7 @@ export namespace Provider {
         autoload: !!envServiceKey,
         options: envServiceKey ? { deploymentId, resourceGroup } : {},
         async getModel(sdk: SDK, modelID: string) {
-          return (sdk as (id: string) => unknown)(modelID)
+          return (sdk as unknown as (id: string) => unknown)(modelID)
         },
       }
     },
@@ -549,8 +552,8 @@ export namespace Provider {
             ...(providerConfig?.options?.featureFlags || {}),
           },
         },
-        async getModel(sdk: ReturnType<typeof createGitLab>, modelID: string) {
-          return sdk.agenticChat(modelID, {
+        async getModel(sdk: SDK, modelID: string) {
+          return (sdk as ReturnType<typeof createGitLab>).agenticChat(modelID, {
             aiGatewayHeaders,
             featureFlags: {
               duo_agent_platform_agentic_chat: true,
@@ -614,20 +617,22 @@ export namespace Provider {
       const { createAiGateway } = await import("ai-gateway-provider")
       const { createUnified } = await import("ai-gateway-provider/providers/unified")
 
+      const headers = input.options?.headers as Record<string, string> | undefined
       const metadata = iife(() => {
         if (input.options?.metadata) return input.options.metadata
         try {
-          return JSON.parse(input.options?.headers?.["cf-aig-metadata"])
+          const raw = headers?.["cf-aig-metadata"]
+          return typeof raw === "string" ? JSON.parse(raw) : undefined
         } catch {
           return undefined
         }
       })
       const opts = {
         metadata,
-        cacheTtl: input.options?.cacheTtl,
-        cacheKey: input.options?.cacheKey,
-        skipCache: input.options?.skipCache,
-        collectLog: input.options?.collectLog,
+        cacheTtl: input.options?.cacheTtl as number | undefined,
+        cacheKey: input.options?.cacheKey as string | undefined,
+        skipCache: input.options?.skipCache as boolean | undefined,
+        collectLog: input.options?.collectLog as boolean | undefined,
       }
 
       const aigateway = createAiGateway({
@@ -1174,31 +1179,38 @@ export namespace Provider {
 
       if (baseURL !== undefined) options["baseURL"] = baseURL
       if (options["apiKey"] === undefined && provider.key) options["apiKey"] = provider.key
-      if (model.headers)
+      if (model.headers) {
+        const existing = options["headers"]
         options["headers"] = {
-          ...options["headers"],
+          ...(typeof existing === "object" && existing !== null ? (existing as Record<string, unknown>) : {}),
           ...model.headers,
         }
+      }
 
       const key = Hash.fast(JSON.stringify({ providerID: model.providerID, npm: model.api.npm, options }))
       const existing = s.sdk.get(key)
       if (existing) return existing
 
       const customFetch = options["fetch"]
-      const chunkTimeout = options["chunkTimeout"] || DEFAULT_CHUNK_TIMEOUT
+      const chunkTimeoutRaw = options["chunkTimeout"] ?? DEFAULT_CHUNK_TIMEOUT
+      const chunkTimeout = typeof chunkTimeoutRaw === "number" && chunkTimeoutRaw > 0 ? chunkTimeoutRaw : DEFAULT_CHUNK_TIMEOUT
       delete options["chunkTimeout"]
 
       options["fetch"] = async (input: RequestInfo | URL, init?: BunFetchRequestInit) => {
         // Preserve custom fetch if it exists, wrap it with timeout logic
-        const fetchFn = customFetch ?? fetch
+        const fetchFn =
+          typeof customFetch === "function"
+            ? (customFetch as (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>)
+            : fetch
         const opts = init ?? {}
         const chunkAbortCtl = typeof chunkTimeout === "number" && chunkTimeout > 0 ? new AbortController() : undefined
         const signals: AbortSignal[] = []
 
         if (opts.signal) signals.push(opts.signal)
         if (chunkAbortCtl) signals.push(chunkAbortCtl.signal)
-        if (options["timeout"] !== undefined && options["timeout"] !== null && options["timeout"] !== false)
-          signals.push(AbortSignal.timeout(options["timeout"]))
+        const timeoutVal = options["timeout"]
+        if (timeoutVal !== undefined && timeoutVal !== null && timeoutVal !== false)
+          signals.push(AbortSignal.timeout(Number(timeoutVal)))
 
         const combined = signals.length === 0 ? null : signals.length === 1 ? signals[0] : AbortSignal.any(signals)
         if (combined) opts.signal = combined
@@ -1228,7 +1240,7 @@ export namespace Provider {
         })
 
         if (!chunkAbortCtl) return res
-        return wrapSSE(res, chunkTimeout, chunkAbortCtl)
+        return wrapSSE(res, chunkTimeout as number, chunkAbortCtl)
       }
 
       const bundledFn = BUNDLED_PROVIDERS[model.api.npm]
@@ -1297,9 +1309,9 @@ export namespace Provider {
     const sdk = await getSDK(model)
 
     try {
-      const language = s.modelLoaders[model.providerID]
+      const language = (s.modelLoaders[model.providerID]
         ? await s.modelLoaders[model.providerID](sdk, model.api.id, provider.options)
-        : sdk.languageModel(model.api.id)
+        : sdk.languageModel(model.api.id)) as LanguageModelV2
       s.models.set(key, language)
       return language
     } catch (e) {
@@ -1369,8 +1381,8 @@ export namespace Provider {
           if (globalMatch) return getModel(providerID, ModelID.make(globalMatch))
 
           const region = provider.options?.region
-          if (region) {
-            const regionPrefix = region.split("-")[0]
+          if (region != null) {
+            const regionPrefix = String(region).split("-")[0]
             if (regionPrefix === "us" || regionPrefix === "eu") {
               const regionalMatch = candidates.find((m) => m.startsWith(`${regionPrefix}.`))
               if (regionalMatch) return getModel(providerID, ModelID.make(regionalMatch))

@@ -63,7 +63,7 @@ export async function CopilotAuthPlugin(input: PluginInput): Promise<Hooks> {
           apiKey: "",
           async fetch(request: RequestInfo | URL, init?: RequestInit) {
             const info = await getAuth()
-            if (info.type !== "oauth") return fetch(request, init)
+            if (!info || info.type !== "oauth") return fetch(request, init)
 
             const url = request instanceof URL ? request.href : request.toString()
             const { isVision, isAgent } = iife(() => {
@@ -119,11 +119,12 @@ export async function CopilotAuthPlugin(input: PluginInput): Promise<Hooks> {
               return { isVision: false, isAgent: false }
             })
 
+            const oauth = info as { refresh: string }
             const headers: Record<string, string> = {
               "x-initiator": isAgent ? "agent" : "user",
               ...(init?.headers as Record<string, string>),
               "User-Agent": `opencode/${Installation.VERSION}`,
-              Authorization: `Bearer ${info.refresh}`,
+              Authorization: `Bearer ${oauth.refresh}`,
               "Openai-Intent": "conversation-edits",
             }
 

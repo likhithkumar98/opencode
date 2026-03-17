@@ -217,7 +217,7 @@ test("GitLab Duo: includes context-1m beta header in aiGatewayHeaders", async ()
     fn: async () => {
       const providers = await Provider.list()
       expect(providers["gitlab"]).toBeDefined()
-      expect(providers["gitlab"].options?.aiGatewayHeaders?.["anthropic-beta"]).toContain("context-1m-2025-08-07")
+      expect((providers["gitlab"].options as Record<string, Record<string, unknown>> | undefined)?.aiGatewayHeaders?.["anthropic-beta"]).toContain("context-1m-2025-08-07")
     },
   })
 })
@@ -252,7 +252,8 @@ test("GitLab Duo: supports feature flags configuration", async () => {
       const providers = await Provider.list()
       expect(providers["gitlab"]).toBeDefined()
       expect(providers["gitlab"].options?.featureFlags).toBeDefined()
-      expect(providers["gitlab"].options?.featureFlags?.duo_agent_platform_agentic_chat).toBe(true)
+      const gitlabOpts = providers["gitlab"].options as Record<string, unknown> | undefined
+      expect((gitlabOpts?.featureFlags as Record<string, unknown>)?.["duo_agent_platform_agentic_chat"]).toBe(true)
     },
   })
 })
