@@ -23,13 +23,26 @@ Treat it as **one workspace, two surfaces** — not “IDE for long coding” vs
 
 Vendored at `.claude/skills/gstack`.
 
+**View / edit in your IDE:** Open `.claude/skills/gstack/<skill>/SKILL.md` (full workflow text). OpenCode entrypoints: `.opencode/agents/gstack-*.md`. No special UI required — same as any markdown file.
+
 ### When `/…` commands work (and when they don’t)
 
 | Environment | Slash commands like `/browse`, `/qa` |
 |-------------|--------------------------------------|
 | **Claude Code** | Yes — **if** you ran `cd .claude/skills/gstack && ./setup` so symlinks exist under `.claude/skills/` and Claude discovers the skills. |
-| **Cursor / Copilot Chat / OpenCode** | **No** — those UIs don’t load Claude Code’s skill slash UI. The table below is the **workflow menu**: ask in natural language (“run a CEO-style product review on this feature”) or **open the matching `SKILL.md`** (e.g. `.claude/skills/gstack/browse/SKILL.md`) and ask the agent to follow it. |
-| **`/browse` specifically** | Needs the gstack **browse binary** (`./setup` builds it). In Cursor you’d use **browser MCP** or terminal `browse` CLI from that directory — not the Claude-only `/browse` trigger. |
+| **Cursor / Copilot Chat** | **No** slash menu. Use natural language or point at `SKILL.md` files. |
+| **OpenCode (this repo)** | **Yes — `@` subagents** under `.opencode/agents/gstack-*.md`. They load the same gstack `SKILL.md` playbooks and work with **OpenAI, Anthropic, or any** session model (whatever you pick in OpenCode). Type `@gstack-` to see them. |
+| **`/browse` specifically** | Needs the gstack **browse binary** (`./setup` builds it). In OpenCode use **`@gstack-browse`** or run `.claude/skills/gstack/browse/dist/browse` in the terminal. |
+
+**OpenCode + OpenAI:** Connect OpenAI in OpenCode, choose e.g. GPT‑4o / GPT‑5.x for the session, then **`@gstack-plan-ceo-review`**, **`@gstack-qa`**, etc. Each agent tells the model to read the matching skill under `.claude/skills/gstack/`. Optional: pin a default model per agent in `opencode.json`:
+
+```json
+"agent": {
+  "gstack-review": { "model": "openai/gpt-4o" }
+}
+```
+
+(Use the exact model id OpenCode shows in your provider list.)
 
 Slash commands (Claude Code only, after setup):
 

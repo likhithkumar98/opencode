@@ -131,7 +131,7 @@ For more info on how to configure OpenCode, [**head over to our docs**](https://
 
 If you're interested in contributing to OpenCode, please read our [contributing docs](./CONTRIBUTING.md) before submitting a pull request.
 
-**Claude Code + gstack:** [gstack](https://github.com/likhithkumar98/gstack) lives under `.claude/skills/gstack`. After clone: `cd .claude/skills/gstack && ./setup` (Bun + Playwright). Commands and monorepo notes: [CLAUDE.md](./CLAUDE.md); layout: [.claude/README.md](./.claude/README.md).
+**gstack:** [gstack](https://github.com/likhithkumar98/gstack) under `.claude/skills/gstack` — run `./setup` once. **Claude Code:** `/plan-ceo-review`, `/browse`, etc. **OpenCode + OpenAI (any model):** `@gstack-plan-ceo-review`, `@gstack-qa`, … — see [.opencode/agents/](./.opencode/agents/) and [CLAUDE.md](./CLAUDE.md).
 
 ### Building on OpenCode
 
