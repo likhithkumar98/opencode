@@ -26,6 +26,7 @@ import { FileTabContent } from "@/pages/session/file-tabs"
 import { createOpenSessionFileTab, createSessionTabs, getTabReorderIndex, type Sizing } from "@/pages/session/helpers"
 import { setSessionHandoff } from "@/pages/session/handoff"
 import { useSessionLayout } from "@/pages/session/session-layout"
+import { getFilename } from "@opencode-ai/util/path"
 
 export function SessionSidePanel(props: {
   reviewPanel: () => JSX.Element
@@ -146,6 +147,9 @@ export function SessionSidePanel(props: {
 
   const fileTreeTab = () => layout.fileTree.tab()
   const [fileSearchQuery, setFileSearchQuery] = createSignal("")
+  const projectName = createMemo(
+    () => sync.project?.name ?? getFilename(sync.project?.worktree ?? ""),
+  )
 
   const setFileTreeTabValue = (value: string) => {
     if (value !== "changes" && value !== "all") return
@@ -234,11 +238,59 @@ export function SessionSidePanel(props: {
               class="h-full flex flex-col overflow-hidden group/filetree"
               classList={{ "border-r border-border-weaker-base": reviewOpen() }}
             >
+              <div class="shrink-0 flex h-8 min-h-8 items-center gap-0.5 border-b border-border-weaker-base bg-background-stronger px-2">
+                <button
+                  type="button"
+                  class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-icon-weak hover:bg-surface-hover hover:text-icon-base"
+                  aria-label={language.t("session.files.collapseAll")}
+                  onClick={() => file.tree.collapseAll()}
+                >
+                  <Icon name="chevron-down" size="small" class="shrink-0" />
+                </button>
+                <span class="min-w-0 flex-1 truncate px-1 text-12-regular text-text-strong uppercase">
+                  {projectName() || language.t("session.files.all")}
+                </span>
+                <TooltipKeybind
+                  title={language.t("session.files.newFile")}
+                  keybind={command.keybind("file.open")}
+                  class="shrink-0"
+                >
+                  <IconButton
+                    icon="open-file"
+                    variant="ghost"
+                    class="h-6 w-6"
+                    aria-label={language.t("session.files.newFile")}
+                    onClick={() =>
+                      dialog.show(() => <DialogSelectFile mode="files" onOpenFile={showAllFiles} />)
+                    }
+                  />
+                </TooltipKeybind>
+                <TooltipKeybind title={language.t("session.files.newFolder")} keybind="" class="shrink-0">
+                  <IconButton
+                    icon="folder-add-left"
+                    variant="ghost"
+                    class="h-6 w-6"
+                    aria-label={language.t("session.files.newFolder")}
+                    onClick={() =>
+                      dialog.show(() => <DialogSelectFile mode="files" onOpenFile={showAllFiles} />)
+                    }
+                  />
+                </TooltipKeybind>
+                <TooltipKeybind title={language.t("session.files.refresh")} keybind="" class="shrink-0">
+                  <IconButton
+                    icon="reset"
+                    variant="ghost"
+                    class="h-6 w-6"
+                    aria-label={language.t("session.files.refresh")}
+                    onClick={() => file.tree.refresh("")}
+                  />
+                </TooltipKeybind>
+              </div>
               <Tabs
                 variant="pill"
                 value={fileTreeTab()}
                 onChange={setFileTreeTabValue}
-                class="h-full"
+                class="h-full min-h-0 flex flex-col"
                 data-scope="filetree"
               >
                 <Tabs.List>
@@ -315,24 +367,25 @@ export function SessionSidePanel(props: {
                 </Tabs.Content>
               </Tabs>
             </div>
+            <Show when={fileOpen()}>
+              <div onPointerDown={() => props.size.start()}>
+                <ResizeHandle
+                  direction="horizontal"
+                  edge="end"
+                  size={layout.fileTree.width()}
+                  min={200}
+                  max={480}
+                  collapseThreshold={160}
+                  onResize={(width) => {
+                    props.size.touch()
+                    layout.fileTree.resize(width)
+                  }}
+                  onCollapse={layout.fileTree.close}
+                />
+              </div>
+            </Show>
           </div>
-          <Show when={fileOpen()}>
-            <div onPointerDown={() => props.size.start()}>
-              <ResizeHandle
-                direction="horizontal"
-                edge="end"
-                size={layout.fileTree.width()}
-                min={200}
-                max={480}
-                collapseThreshold={160}
-                onResize={(width) => {
-                  props.size.touch()
-                  layout.fileTree.resize(width)
-                }}
-                onCollapse={layout.fileTree.close}
-              />
-            </div>
-          </Show>
+
           <div
             aria-hidden={!reviewOpen()}
             inert={!reviewOpen()}

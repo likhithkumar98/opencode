@@ -538,6 +538,10 @@ export const dict = {
   "session.files.empty": "No files",
   "session.files.searchPlaceholder": "Search files…",
   "session.files.binaryContent": "Binary file (content cannot be displayed)",
+  "session.files.newFile": "New file",
+  "session.files.newFolder": "New folder",
+  "session.files.refresh": "Refresh",
+  "session.files.collapseAll": "Collapse all",
 
   "session.gitGraph.title": "Git graph",
   "session.gitGraph.noBranch": "No branch",
