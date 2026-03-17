@@ -15,6 +15,9 @@ import { Protected } from "./protected"
 import { InstanceContext } from "@/effect/instance-context"
 import { Effect, Layer, ServiceMap } from "effect"
 import { runPromiseInstance } from "@/effect/runtime"
+import { Bus } from "../bus"
+import { FileWatcher } from "./watcher"
+import { LSP } from "../lsp"
 
 const log = Log.create({ service: "file" })
 
@@ -347,6 +350,15 @@ export namespace File {
     return runPromiseInstance(FileService.use((s) => s.read(file)))
   }
 
+  const maxWriteBytes = 8 * 1024 * 1024
+
+  export async function writeText(file: string, raw: string): Promise<void> {
+    if (raw.length > maxWriteBytes) {
+      throw new Error(`File too large to save via app (${maxWriteBytes} character limit)`)
+    }
+    return runPromiseInstance(FileService.use((s) => s.write(file, raw)))
+  }
+
   export async function list(dir?: string) {
     return runPromiseInstance(FileService.use((s) => s.list(dir)))
   }
@@ -361,6 +373,7 @@ export namespace FileService {
     readonly init: () => Effect.Effect<void>
     readonly status: () => Effect.Effect<File.Info[]>
     readonly read: (file: string) => Effect.Effect<File.Content>
+    readonly write: (file: string, raw: string) => Effect.Effect<void>
     readonly list: (dir?: string) => Effect.Effect<File.Node[]>
     readonly search: (input: {
       query: string
@@ -620,6 +633,33 @@ export class FileService extends ServiceMap.Service<FileService, FileService.Ser
         })
       })
 
+      const write = Effect.fn("FileService.write")(function* (file: string, raw: string) {
+        return yield* Effect.promise(async () => {
+          const full = path.join(instance.directory, file)
+          if (!Instance.containsPath(full)) {
+            throw new Error(`Access denied: path escapes project directory`)
+          }
+          if (isImageByExtension(file)) {
+            throw new Error("Cannot write image files via in-app editor")
+          }
+          const text = isTextByExtension(file) || isTextByName(file)
+          if (isBinaryByExtension(file) && !text) {
+            throw new Error("Refusing to overwrite binary file")
+          }
+          const existed = await Filesystem.exists(full)
+          await Filesystem.write(full, raw)
+          let rel = path.relative(instance.directory, full)
+          if (!rel || rel.startsWith("..")) rel = file
+          rel = rel.replaceAll("\\", "/")
+          await Bus.publish(File.Event.Edited, { file: full })
+          await Bus.publish(FileWatcher.Event.Updated, {
+            file: rel,
+            event: existed ? "change" : "add",
+          })
+          await LSP.touchFile(full, true)
+        })
+      })
+
       const list = Effect.fn("FileService.list")(function* (dir?: string) {
         return yield* Effect.promise(async () => {
           const exclude = [".git", ".DS_Store"]
@@ -718,7 +758,7 @@ export class FileService extends ServiceMap.Service<FileService, FileService.Ser
 
       log.info("init")
 
-      return FileService.of({ init, status, read, list, search })
+      return FileService.of({ init, status, read, write, list, search })
     }),
   )
 }

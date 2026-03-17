@@ -194,6 +194,15 @@ export const { use: useFile, provider: FileProvider } = createSimpleContext({
       return promise
     }
 
+    const save = async (file: string, content: string) => {
+      await sdk.client.file.write({
+        path: file,
+        content,
+        directory: scope(),
+      })
+      await load(file, { force: true })
+    }
+
     const search = (query: string, dirs: "true" | "false") =>
       sdk.client.find.files({ query, dirs }).then(
         (x) => (x.data ?? []).map(path.normalize),
@@ -276,6 +285,7 @@ export const { use: useFile, provider: FileProvider } = createSimpleContext({
       setSelectedLines,
       searchFiles: (query: string) => search(query, "false"),
       searchFilesAndDirectories: (query: string) => search(query, "true"),
+      save,
     }
   },
 })

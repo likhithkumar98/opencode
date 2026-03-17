@@ -1,4 +1,4 @@
-import { createEffect, createMemo, Match, on, onCleanup, Switch } from "solid-js"
+import { createEffect, createMemo, createSignal, Match, on, onCleanup, Show, Switch } from "solid-js"
 import { createStore } from "solid-js/store"
 import { Dynamic } from "solid-js/web"
 import type { FileSearchHandle } from "@opencode-ai/ui/file"
@@ -9,6 +9,7 @@ import { sampledChecksum } from "@opencode-ai/util/encode"
 import { DropdownMenu } from "@opencode-ai/ui/dropdown-menu"
 import { IconButton } from "@opencode-ai/ui/icon-button"
 import { Tabs } from "@opencode-ai/ui/tabs"
+import { Button } from "@opencode-ai/ui/button"
 import { ScrollView } from "@opencode-ai/ui/scroll-view"
 import { showToast } from "@opencode-ai/ui/toast"
 import { selectionFromLines, useFile, type FileSelection, type SelectedLineRange } from "@/context/file"
@@ -85,6 +86,50 @@ export function FileTabContent(props: { tab: string }) {
     return file.get(p)
   })
   const contents = createMemo(() => state()?.content?.content ?? "")
+  const [editing, setEditing] = createSignal(false)
+  const [draft, setDraft] = createSignal("")
+  const [saving, setSaving] = createSignal(false)
+
+  const canEdit = createMemo(() => {
+    const c = state()?.content
+    if (!c || c.type !== "text") return false
+    if (c.encoding === "base64") return false
+    return true
+  })
+
+  createEffect(
+    on(
+      () => props.tab,
+      () => {
+        setEditing(false)
+      },
+    ),
+  )
+
+  const startEdit = () => {
+    setDraft(contents())
+    setEditing(true)
+  }
+
+  const saveEdit = async () => {
+    const p = path()
+    if (!p) return
+    setSaving(true)
+    try {
+      await file.save(p, draft())
+      showToast({ variant: "success", title: language.t("session.file.saveSuccess") })
+      setEditing(false)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : language.t("error.chain.unknown")
+      showToast({
+        variant: "error",
+        title: language.t("session.file.saveFailed"),
+        description: msg,
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
   const cacheKey = createMemo(() => sampledChecksum(contents()))
   const selectedLines = createMemo<SelectedLineRange | null>(() => {
     const p = path()
@@ -192,6 +237,7 @@ export function FileTabContent(props: { tab: string }) {
     getHoverSelectedRange: activeSelection,
     cancelDraftOnCommentToggle: true,
     clearSelectionOnSelectionEndNull: true,
+    draftOnGutterSelect: false,
     onSubmit: ({ comment, selection }) => {
       const p = path()
       if (!p) return
@@ -456,7 +502,36 @@ export function FileTabContent(props: { tab: string }) {
         onScroll={handleScroll as any}
       >
         <Switch>
-          <Match when={state()?.loaded}>{renderFile(contents())}</Match>
+          <Match when={editing()}>
+            <div class="flex flex-col gap-3 px-4 pb-8 min-h-[50vh]">
+              <div class="flex flex-wrap gap-2 shrink-0">
+                <Button size="small" variant="primary" disabled={saving()} onClick={() => void saveEdit()}>
+                  {language.t("session.file.save")}
+                </Button>
+                <Button size="small" variant="secondary" disabled={saving()} onClick={() => setEditing(false)}>
+                  {language.t("ui.common.cancel")}
+                </Button>
+              </div>
+              <textarea
+                class="w-full min-h-[50vh] flex-1 resize-y rounded-md border border-border-base bg-background-base p-3 font-mono text-sm text-text-strong outline-none focus-visible:ring-2 focus-visible:ring-border-active"
+                value={draft()}
+                onInput={(e) => setDraft(e.currentTarget.value)}
+                spellcheck={false}
+              />
+            </div>
+          </Match>
+          <Match when={state()?.loaded}>
+            <div class="relative">
+              <Show when={canEdit()}>
+                <div class="absolute right-2 top-0 z-20">
+                  <Button size="small" variant="secondary" onClick={startEdit}>
+                    {language.t("session.file.editInApp")}
+                  </Button>
+                </div>
+              </Show>
+              {renderFile(contents())}
+            </div>
+          </Match>
           <Match when={state()?.loading}>
             <div class="px-6 py-4 text-text-weak">{language.t("common.loading")}...</div>
           </Match>

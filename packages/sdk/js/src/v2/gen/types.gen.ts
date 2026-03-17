@@ -4164,6 +4164,14 @@ export type FileReadData = {
   url: "/file/content"
 }
 
+export type FileWriteResponses = {
+  200: {
+    ok: true
+  }
+}
+
+export type FileWriteResponse = FileWriteResponses[keyof FileWriteResponses]
+
 export type FileReadResponses = {
   /**
    * File content

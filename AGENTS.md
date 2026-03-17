@@ -1,4 +1,4 @@
-- Using **Claude Code** here: also read **CLAUDE.md** (gstack: `/browse`, `/qa`, `/ship`, etc.).
+- Using **Claude Code** here: also read **CLAUDE.md** (gstack: `/browse`, `/qa`, `/ship`, etc.). **gstack does not replace normal file edits** — use standard edit/write tools on the repo; `/browse` is only for web URLs.
 - To regenerate the JavaScript SDK, run `./packages/sdk/js/script/build.ts`.
 - ALWAYS USE PARALLEL TOOLS WHEN APPLICABLE.
 - The default branch in this repo is `dev`.

@@ -35,6 +35,7 @@ import type {
   FilePartInput,
   FilePartSource,
   FileReadResponses,
+  FileWriteResponses,
   FileStatusResponses,
   FindFilesResponses,
   FindSymbolsResponses,
@@ -2807,6 +2808,44 @@ export class File extends HeyApiClient {
       url: "/file/content",
       ...options,
       ...params,
+    })
+  }
+
+  /**
+   * Write file
+   *
+   * Save text file from the in-app editor.
+   */
+  public write<ThrowOnError extends boolean = false>(
+    parameters: {
+      directory?: string
+      workspace?: string
+      path: string
+      content: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const { path: filePath, content, ...query } = parameters
+    const params = buildClientParams(
+      [query],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).put<FileWriteResponses, unknown, ThrowOnError>({
+      url: "/file/content",
+      ...options,
+      ...params,
+      body: { path: filePath, content },
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+      },
     })
   }
 

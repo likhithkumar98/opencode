@@ -65,6 +65,8 @@ type LineCommentControllerProps<T extends LineCommentShape> = {
   getHoverSelectedRange?: Accessor<SelectedLineRange | null>
   cancelDraftOnCommentToggle?: boolean
   clearSelectionOnSelectionEndNull?: boolean
+  /** If false, gutter line selection only highlights; use hover Comment to add a note (frees main chat input). Default true (e.g. PR review). */
+  draftOnGutterSelect?: boolean
 }
 
 type LineCommentControllerWithSideProps<T extends LineCommentShape> = LineCommentControllerProps<T> & {
@@ -454,9 +456,17 @@ export function createLineCommentController<T extends LineCommentShape>(
     note.finishSelection(range)
   }
 
+  const gutterOpensDraft = props.draftOnGutterSelect !== false
   const onLineNumberSelectionEnd = (range: SelectedLineRange | null) => {
-    if (!range) return
-    note.openDraft(range)
+    if (!range) {
+      if (!gutterOpensDraft) {
+        if (props.clearSelectionOnSelectionEndNull) note.select(null)
+        note.cancelDraft()
+      }
+      return
+    }
+    if (gutterOpensDraft) note.openDraft(range)
+    else note.finishSelection(range)
   }
 
   return {

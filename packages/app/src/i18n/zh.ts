@@ -430,6 +430,11 @@ export const dict = {
   "toast.model.none.description": "请先连接提供商以总结此会话",
   "toast.file.loadFailed.title": "加载文件失败",
   "toast.file.listFailed.title": "列出文件失败",
+
+  "session.file.editInApp": "在应用内编辑",
+  "session.file.save": "保存",
+  "session.file.saveSuccess": "已保存",
+  "session.file.saveFailed": "保存失败",
   "toast.context.noLineSelection.title": "未选择行",
   "toast.context.noLineSelection.description": "请先在文件标签中选择行范围。",
   "toast.session.share.copyFailed.title": "无法复制链接到剪贴板",

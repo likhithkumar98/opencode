@@ -31,7 +31,7 @@ export const dict: Record<string, string> = {
   "ui.lineComment.label.suffix": "",
   "ui.lineComment.editorLabel.prefix": "Commenting on ",
   "ui.lineComment.editorLabel.suffix": "",
-  "ui.lineComment.placeholder": "Add comment",
+  "ui.lineComment.placeholder": "Add note for selection (Esc to close)",
   "ui.lineComment.submit": "Comment",
 
   "ui.sessionTurn.steps.show": "Show steps",

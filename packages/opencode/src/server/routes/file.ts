@@ -172,6 +172,43 @@ export const FileRoutes = lazy(() =>
         return c.json(content)
       },
     )
+    .put(
+      "/file/content",
+      describeRoute({
+        summary: "Write file",
+        description: "Save text file content from the in-app editor (project files only).",
+        operationId: "file.write",
+        responses: {
+          200: {
+            description: "Saved",
+            content: {
+              "application/json": {
+                schema: resolver(z.object({ ok: z.literal(true) })),
+              },
+            },
+          },
+        },
+      }),
+      validator(
+        "query",
+        z.object({
+          directory: z.string().optional(),
+          workspace: z.string().optional(),
+        }),
+      ),
+      validator(
+        "json",
+        z.object({
+          path: z.string(),
+          content: z.string().max(8 * 1024 * 1024),
+        }),
+      ),
+      async (c) => {
+        const { path: rel, content } = c.req.valid("json")
+        await File.writeText(rel, content)
+        return c.json({ ok: true as const })
+      },
+    )
     .get(
       "/file/status",
       describeRoute({
