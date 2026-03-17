@@ -23,6 +23,12 @@ target
 .scripts
 .direnv/
 
+# gstack (vendored under .claude/skills/gstack) — build once via ./setup
+.claude/skills/gstack/node_modules/
+.claude/skills/gstack/browse/dist/
+.claude/skills/gstack/bun.lock
+.gstack/
+
 # Local dev files
 opencode-dev
 logs/

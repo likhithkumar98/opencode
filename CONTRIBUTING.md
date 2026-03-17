@@ -76,6 +76,16 @@ Replace `<platform>` with your platform (e.g., `darwin-arm64`, `linux-x64`).
   - `packages/desktop`: The native desktop app, built with Tauri (wraps `packages/app`)
   - `packages/plugin`: Source for `@opencode-ai/plugin`
 
+### Claude Code + gstack (optional)
+
+[gstack](https://github.com/likhithkumar98/gstack) workflow skills are vendored under `.claude/skills/gstack`. After clone, run once:
+
+```bash
+cd .claude/skills/gstack && ./setup
+```
+
+Requires Bun 1+. See **[CLAUDE.md](./CLAUDE.md)** for slash commands; **AGENTS.md** still applies to all code changes.
+
 ### Understanding bun dev vs opencode
 
 During development, `bun dev` is the local equivalent of the built `opencode` command. Both run the same CLI interface:

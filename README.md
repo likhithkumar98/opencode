@@ -131,6 +131,8 @@ For more info on how to configure OpenCode, [**head over to our docs**](https://
 
 If you're interested in contributing to OpenCode, please read our [contributing docs](./CONTRIBUTING.md) before submitting a pull request.
 
+**Claude Code + gstack:** [gstack](https://github.com/likhithkumar98/gstack) lives under `.claude/skills/gstack`. After clone: `cd .claude/skills/gstack && ./setup` (Bun + Playwright). Commands and monorepo notes: [CLAUDE.md](./CLAUDE.md); layout: [.claude/README.md](./.claude/README.md).
+
 ### Building on OpenCode
 
 If you are working on a project that's related to OpenCode and is using "opencode" as part of its name, for example "opencode-dashboard" or "opencode-mobile", please add a note to your README to clarify that it is not built by the OpenCode team and is not affiliated with us in any way.
