@@ -10,7 +10,7 @@
     "dev": "vite",
     "build": "bun run typecheck && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "bunx tauri"
   },
   "dependencies": {
     "@opencode-ai/app": "workspace:*",

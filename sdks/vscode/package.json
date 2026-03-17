@@ -23,6 +23,21 @@
   "activationEvents": [],
   "main": "./dist/extension.js",
   "contributes": {
+    "configuration": {
+      "title": "opencode",
+      "properties": {
+        "opencode.launchMode": {
+          "type": "string",
+          "enum": ["terminal", "web"],
+          "enumDescriptions": [
+            "Open opencode in an integrated terminal (TUI).",
+            "Open opencode in VS Code's Simple Browser (web UI)."
+          ],
+          "default": "terminal",
+          "description": "How to open opencode when using the Open opencode command or keybinding."
+        }
+      }
+    },
     "commands": [
       {
         "command": "opencode.openTerminal",

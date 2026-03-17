@@ -8,10 +8,13 @@ This extension requires the [opencode CLI](https://opencode.ai) to be installed 
 
 ## Features
 
-- **Quick Launch**: Use `Cmd+Esc` (Mac) or `Ctrl+Esc` (Windows/Linux) to open opencode in a split terminal view, or focus an existing terminal session if one is already running.
-- **New Session**: Use `Cmd+Shift+Esc` (Mac) or `Ctrl+Shift+Esc` (Windows/Linux) to start a new opencode terminal session, even if one is already open. You can also click the opencode button in the UI.
-- **Context Awareness**: Automatically share your current selection or tab with opencode.
-- **File Reference Shortcuts**: Use `Cmd+Option+K` (Mac) or `Alt+Ctrl+K` (Linux/Windows) to insert file references. For example, `@File#L37-42`.
+- **Launch mode (user preference)**: In Settings, set **opencode: Launch Mode** to:
+  - **Terminal** (default): Open opencode in an integrated terminal (TUI).
+  - **Web**: Start the opencode server and open the web UI in VS Code’s Simple Browser (or system browser as fallback).
+- **Quick Launch**: Use `Cmd+Esc` (Mac) or `Ctrl+Esc` (Windows/Linux) to open opencode (terminal or web, according to the setting), or focus an existing session if one is already running.
+- **New Session**: Use `Cmd+Shift+Esc` (Mac) or `Ctrl+Shift+Esc` (Windows/Linux) to start a new opencode session. You can also click the opencode button in the UI.
+- **Context Awareness**: Automatically share your current selection or tab with opencode (terminal mode).
+- **File Reference Shortcuts**: Use `Cmd+Option+K` (Mac) or `Alt+Ctrl+K` (Linux/Windows) to insert file references in the opencode terminal (e.g. `@File#L37-42`).
 
 ## Support
 

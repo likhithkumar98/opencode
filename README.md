@@ -66,7 +66,9 @@ nix run nixpkgs#opencode           # or github:anomalyco/opencode for latest dev
 
 ### Desktop App (BETA)
 
-OpenCode is also available as a desktop application. Download directly from the [releases page](https://github.com/anomalyco/opencode/releases) or [opencode.ai/download](https://opencode.ai/download).
+On **macOS** (and Windows/Linux), the recommended way to run OpenCode as a **native application** (not in the browser) is the desktop app—similar to how [Visual Studio Code](https://github.com/microsoft/vscode) ships a native desktop experience on each platform.
+
+Download directly from the [releases page](https://github.com/anomalyco/opencode/releases) or [opencode.ai/download](https://opencode.ai/download).
 
 | Platform              | Download                              |
 | --------------------- | ------------------------------------- |
@@ -81,6 +83,15 @@ brew install --cask opencode-desktop
 # Windows (Scoop)
 scoop bucket add extras; scoop install extras/opencode-desktop
 ```
+
+**Run the desktop app on Mac from source** (no web UI):
+
+```bash
+bun install
+bun run dev:desktop
+```
+
+This launches the Tauri-based desktop app (see `packages/desktop`). For the Electron-based build, use `packages/desktop-electron` and run `bun run dev` from that package.
 
 #### Installation Directory
 
